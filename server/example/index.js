@@ -24,7 +24,7 @@ exports.register = function(server, options, next){
             description: 'User required authorization',
             auth: {
                 strategy: 'standard',
-                scope: ['user']
+                scope: 'user'
             },
             handler: function(request, reply) {
 
@@ -46,6 +46,24 @@ exports.register = function(server, options, next){
             }
         }
     });
+
+    server.route({
+        method: 'GET',
+        path: '/example-four/{id}',
+        config: {
+            description: 'User specific authorization required.',
+            auth: {
+                strategy: 'standard',
+                scope: ['admin', 'user-{params.id}']
+            },
+            handler: function(request, reply) {
+
+                return reply('Success, you can access a route for ' + request.params.id + '!');
+
+            }
+        }
+    });
+
 
     next();
 }

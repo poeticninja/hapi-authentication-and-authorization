@@ -97,15 +97,21 @@ function getValidatedUser(email, password){
         var users = [
             {
                 id: 123,
-                email: 'guest@guest.com',
-                password: 'guest',
-                scope: ['user']
+                email: 'admin@admin.com',
+                password: 'admin',
+                scope: ['user', 'admin', 'user-123']
             },
             {
                 id: 124,
-                email: 'admin@admin.com',
-                password: 'admin',
-                scope: ['user', 'admin']
+                email: 'guest@guest.com',
+                password: 'guest',
+                scope: ['user', 'user-124']
+            },
+            {
+                id: 125,
+                email: 'other@other.com',
+                password: 'other',
+                scope: ['user', 'user-125']
             }
         ];
 
@@ -121,6 +127,8 @@ function getValidatedUser(email, password){
             return fulfill(grabCleanUser(users[0]));
         } else if (email === users[1].email && password === users[1].password) {
             return fulfill(grabCleanUser(users[1]));
+        } else if (email === users[2].email && password === users[2].password) {
+            return fulfill(grabCleanUser(users[2]));
         } else {
             return reject(null);
         }
