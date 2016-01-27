@@ -84,40 +84,30 @@ exports.register = function (server, options, next) {
                 const email = request.payload.email;
                 const password = request.payload.password;
 
-                let message = '';
-                let account = null;
+                getValidatedUser(request.payload.email, request.payload.password)
+                .then(function (user) {
 
-                if (!email || !password) {
+                    if (user) {
 
-                    message = 'Missing username or password';
+                        const sid = String(++uuid);
 
-                } else {
+                        request.server.app.cache.set(sid, { account: user}, 0, (err) => {
 
-                    getValidatedUser(request.payload.email, request.payload.password)
-                    .then(function (user) {
+                            Hoek.assert(!err, err);
 
-                        if (user) {
+                            request.cookieAuth.set({ sid: sid });
 
-                            const sid = String(++uuid);
+                            return reply.redirect('/');
+                        });
 
-                            request.server.app.cache.set(sid, { account: user}, 0, (err) => {
+                    } else {
 
-                                Hoek.assert(!err, err);
-
-                                request.cookieAuth.set({ sid: sid });
-                                
-                                return reply.redirect('/');
-                            });
-
-                        } else {
-
-                            return reply(Boom.unauthorized('Bad email or password'));
-                        }
-                    })
-                    .catch(function (err) {
-                        return reply(Boom.badImplementation());
-                    });
-                }
+                        return reply(Boom.unauthorized('Bad email or password'));
+                    }
+                })
+                .catch(function (err) {
+                    return reply(Boom.badImplementation());
+                });
             }
         }
     }, {
