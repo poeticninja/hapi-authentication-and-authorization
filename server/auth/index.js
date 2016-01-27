@@ -1,27 +1,46 @@
-var Joi = require('joi');
-var Boom = require('boom');
-var Promise = require('bluebird');
+'use strict';
 
-exports.register = function(server, options, next){
+/**
+ * Dependencies.
+ */
+const Joi = require('joi');
+const Boom = require('boom');
+const Promise = require('bluebird');
+const Hoek = require('hoek');
 
-    server.register([
-        {
-            register: require('hapi-auth-cookie')
+let uuid = 1; // Use seq instead of proper unique identifiers for demo only
+const TTL = 24 * 60 * 60 * 1000; // Set session to 1 day
+
+
+exports.register = function (server, options, next) {
+
+    const cache = server.cache({
+        segment: 'standard',
+        expiresIn: TTL
+    });
+
+    server.app.cache = cache;
+
+    // Set our server authentication strategy
+    server.auth.strategy('standard', 'cookie', {
+        cookie: 'app-cookie', // Cookie name
+        password: 'somecrazycookiesecretthatcantbeguesseswouldgohere', // cookie secret
+        isSecure: false, // required for non-https applications
+        ttl: TTL,
+        validateFunc: function (request, session, callback) {
+
+            cache.get(session.sid, (err, cached) => {
+
+                if (err) {
+                    return callback(err, false);
+                }
+
+                if (!cached) {
+                    return callback(null, false);
+                }
+                return callback(null, true, cached.account);
+            });
         }
-    ], function(err) {
-        if (err) {
-            console.error('Failed to load a plugin:', err);
-            throw err;
-        }
-
-        // Set our server authentication strategy
-        server.auth.strategy('standard', 'cookie', {
-            password: 'somecrazycookiesecretthatcantbeguesseswouldgohere', // cookie secret
-            cookie: 'app-cookie', // Cookie name
-            isSecure: false, // required for non-https applications
-            ttl: 24 * 60 * 60 * 1000 // Set session to 1 day
-        });
-
     });
 
     server.auth.default({
@@ -29,7 +48,27 @@ exports.register = function(server, options, next){
         scope: ['admin']
     });
 
-    server.route({
+    server.route([{
+        method: 'GET',
+        path: '/login',
+        config: {
+            auth : {
+                mode: 'try'
+            },
+            handler: function (request, reply) {
+
+                if (request.auth.isAuthenticated) {
+                    return reply.redirect('/');
+                }
+
+                return reply('<html><head><title>Login page</title></head><body>' +
+                    '<form method="post" action="/login">' +
+                    'Email:<br><input type="text" name="email" ><br>' +
+                    'Password:<br><input type="password" name="password"><br/><br/>' +
+                    '<input type="submit" value="Login"></form></body></html>');
+            }
+        }
+    }, {
         method: 'POST',
         path: '/login',
         config: {
@@ -40,40 +79,60 @@ exports.register = function(server, options, next){
                     password: Joi.string().min(2).max(200).required()
                 }
             },
-            handler: function(request, reply) {
+            handler: function (request, reply) {
 
-                getValidatedUser(request.payload.email, request.payload.password)
-                    .then(function(user){
+                const email = request.payload.email;
+                const password = request.payload.password;
+
+                let message = '';
+                let account = null;
+
+                if (!email || !password) {
+
+                    message = 'Missing username or password';
+
+                } else {
+
+                    getValidatedUser(request.payload.email, request.payload.password)
+                    .then(function (user) {
 
                         if (user) {
-                            request.auth.session.set(user);
-                            return reply('Login Successful!');
+
+                            const sid = String(++uuid);
+
+                            request.server.app.cache.set(sid, { account: user}, 0, (err) => {
+
+                                Hoek.assert(!err, err);
+
+                                request.cookieAuth.set({ sid: sid });
+                                
+                                return reply.redirect('/');
+                            });
+
                         } else {
+
                             return reply(Boom.unauthorized('Bad email or password'));
                         }
-
                     })
-                    .catch(function(err){
+                    .catch(function (err) {
                         return reply(Boom.badImplementation());
                     });
-
+                }
             }
         }
-    });
-
-    server.route({
+    }, {
         method: 'GET',
         path: '/logout',
         config: {
             auth: false,
-            handler: function(request, reply) {
+            handler: function (request, reply) {
 
-                request.auth.session.clear();
+                request.cookieAuth.clear();
                 return reply('Logout Successful!');
 
             }
         }
-    });
+    }]);
 
     next();
 }
@@ -91,29 +150,28 @@ exports.register.attributes = {
  * AGAIN THIS IS JUST TO GET THIS EXAMPLE WORKING!
  */
 
-function getValidatedUser(email, password){
-    return new Promise(function(fulfill, reject){
+function getValidatedUser(email, password) {
+    return new Promise(function (fulfill, reject) {
 
-        var users = [
-            {
-                id: 123,
-                email: 'admin@admin.com',
-                password: 'admin',
-                scope: ['user', 'admin', 'user-123']
-            },
-            {
-                id: 124,
-                email: 'guest@guest.com',
-                password: 'guest',
-                scope: ['user', 'user-124']
-            },
-            {
-                id: 125,
-                email: 'other@other.com',
-                password: 'other',
-                scope: ['user', 'user-125']
-            }
-        ];
+        var users = [{
+            id: 123,
+            username: 'admin',
+            email: 'admin@admin.com',
+            password: 'admin',
+            scope: ['user', 'admin', 'user-123']
+        }, {
+            id: 124,
+            username: 'guest',
+            email: 'guest@guest.com',
+            password: 'guest',
+            scope: ['user', 'user-124']
+        }, {
+            id: 125,
+            username: 'other',
+            email: 'other@other.com',
+            password: 'other',
+            scope: ['user', 'user-125']
+        }];
 
         // This is done to remove the password before being sent.
         function grabCleanUser(user) {
