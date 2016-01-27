@@ -1,10 +1,21 @@
+'use strict';
+
 /**
-* Dependencies.
-*/
-var Hapi = require('hapi');
+ * Dependencies.
+ */
+const AuthCookie = require('hapi-auth-cookie');
+const Good = require('good');
+const Hapi = require('hapi');
+const Hoek = require('hoek');
+
+
+const AuthIndex = require('./server/auth/index.js');
+const Base = require('./server/base/index.js');
+const Example = require('./server/example/index.js');
+
 
 // Create a new server
-var server = new Hapi.Server();
+const server = new Hapi.Server();
 
 // Setup the server with a host and port
 server.connection({
@@ -23,28 +34,33 @@ module.exports = server;
     First: community/npm plugins are loaded
     Second: project specific plugins are loaded
  */
-server.register([
-    {
-        register: require("good"),
-        options: {
-            reporters: [{
-                reporter: require('good-console'),
-                events: { ops: '*', request: '*', log: '*', response: '*', 'error': '*' }
-            }]
-        }
-    },
-    {
-        register: require('./server/auth/index.js')
-    },
-    {
-        register: require('./server/example/index.js')
-    },
-    {
-        register: require('./server/base/index.js')
-    }
-], function () {
+server.register(
+    [
+        {
+            register: Good,
+            options: {
+                reporters: [{
+                    reporter: require('good-console'),
+                    events: {
+                        //ops: '*',
+                        request: '*',
+                        log: '*',
+                        response: '*',
+                        'error': '*'
+                    }
+                }]
+            }
+        },
+        AuthCookie,
+        AuthIndex,
+        Base,
+        Example
+    ], (err) => {
+
+    Hoek.assert(!err, err);
+
     //Start the server
-    server.start(function() {
+    server.start(function () {
         //Log to the console the host and port info
         console.log('Server started at: ' + server.info.uri);
     });

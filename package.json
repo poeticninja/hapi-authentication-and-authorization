@@ -12,12 +12,13 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "bluebird": "^2.9.25",
-    "boom": "~2.7.1",
-    "good": "~6.1.2",
-    "good-console": "~5.0.0",
-    "hapi": "~8.6.1",
-    "hapi-auth-cookie": "~2.2.0",
-    "joi": "~7.0.0"
+    "bluebird": "~3.1.5",
+    "boom": "~3.1.2",
+    "good": "~6.4.0",
+    "good-console": "~5.3.0",
+    "hapi": "~12.1.0",
+    "hapi-auth-cookie": "~5.0.0",
+    "hoek": "^3.0.4",
+    "joi": "~7.2.2"
   }
 }
