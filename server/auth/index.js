@@ -46,7 +46,7 @@ exports.register = function(server, options, next){
                     .then(function(user){
 
                         if (user) {
-                            request.auth.session.set(user);
+                            request.cookieAuth.set(user);
                             return reply('Login Successful!');
                         } else {
                             return reply(Boom.unauthorized('Bad email or password'));
@@ -68,7 +68,7 @@ exports.register = function(server, options, next){
             auth: false,
             handler: function(request, reply) {
 
-                request.auth.session.clear();
+                request.cookieAuth.clear();
                 return reply('Logout Successful!');
 
             }
